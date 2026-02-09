@@ -1,0 +1,8 @@
+{
+  "settings": {
+    "gconly": false,
+    "autoview": true,
+    "welcome": true
+  },
+  "stickcmd": {}
+}
