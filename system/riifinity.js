@@ -2090,38 +2090,7 @@ break
         }
         break;
     case 'owner': {
-      const kontakUtama = {
-        displayName: '𝗥𝗶𝗳𝗶𝗶𝗻𝗶𝘁𝘆 𝗦𝗽𝗮𝗰𝗲',
-        vcard: `BEGIN:VCARD
-    VERSION:3.0
-    N:;;;; 
-    FN:${global.ownername}
-    item1.TEL;waid=628821472441:628821472441
-    item1.X-ABLabel:ᴅᴇᴠᴇʟᴏᴘᴇʀ
-    item2.TEL;waid=${global.ownernumber}:${global.ownernumber}
-    item2.X-ABLabel:ᴍʏ ᴏᴡɴᴇʀ
-    EMAIL;type=INTERNET:${email}
-    ORG:ᴏᴡɴᴇʀ ʙᴏᴛ
-    END:VCARD`
-      }
-      await asya.sendMessage(from, {
-        contacts: { contacts: [kontakUtama] },
-        contextInfo: {
-          forwardingScore: 999,
-          isForwarded: false,
-          mentionedJid: [sender],
-          externalAdReply: {
-            showAdAttribution: true,
-            renderLargerThumbnail: true,
-            title: font(`ᴏᴡɴᴇʀ ʜᴀɪᴅᴀʀ ʀᴠx`),
-            containsAutoReply: true,
-            mediaType: 1,
-            jpegThumbnail: await getBuffer(global.imglogo),
-            mediaUrl: `https://www.youtube.com/channel/UCZzt-Qw0zTYc8UP-LL2G5fA`,
-            sourceUrl: `https://www.youtube.com/channel/UCZzt-Qw0zTYc8UP-LL2G5fA`
-          }
-        }
-      }, { quoted: m })
+      reply(`https://wa.me/6288214772441`)
     }
     break;
         
