@@ -47,6 +47,7 @@ ${readmore}
 ≻ ${prefix}tebakgambar
 ≻ ${prefix}siapakahaku
 ≻ ${prefix}suit
+≻ ${prefix}typingrace
 
 *( 〽 )  Convert Menu*
 ≻ ${prefix}bass
