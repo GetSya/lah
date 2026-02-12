@@ -62,6 +62,9 @@ async function startneo() {
     version,
     logger: Pino({ level: 'silent' }),
     browser: ['Windows', 'Firefox'],
+    msgRetryCounterCache,
+    syncFullHistory: true, 
+    markOnlineOnConnect: true,
     printQRInTerminal: !process.argv.includes("--pairing-code"),
     auth: {
       creds: state.creds,
@@ -70,11 +73,15 @@ async function startneo() {
     msgRetryCounterCache,
     generateHighQualityLinkPreview: true,
     markOnlineOnConnect: true,
-    getMessage: async (key) => {
-      const jid = jidNormalizedUser(key.remoteJid);
-      const msg = await store.loadMessage(jid, key.id);
-      return msg?.message || "";
-    },
+getMessage: async (key) => {
+    if (store) {
+        const msg = await store.loadMessage(key.remoteJid, key.id)
+        return msg?.message || undefined
+    }
+    return {
+        conversation: "Halo, saya adalah bot!" // Fallback pesan default
+    }
+},
   });
 
   store.bind(asya.ev);
@@ -105,6 +112,7 @@ async function startneo() {
         try {
             const mek = chatUpdate.messages[0]
             if (!mek.message) return
+            await asya.readMessages([mek.key])
             mek.message = (Object.keys(mek.message)[0] === 'ephemeralMessage') ? mek.message.ephemeralMessage.message : mek.message
             if (mek.key && mek.key.remoteJid === 'status@broadcast' )
             if (!asya.public && !mek.key.fromMe && chatUpdate.type === 'notify') return

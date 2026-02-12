@@ -70,6 +70,9 @@ const { default:
     /// ---------------- REPLY MESSAGE ---- /////
     const jojoh = `Tunggu sebentar yah kak!\nSedang Jojo Proses!`
     
+    /// ---------------- REPLY MESSAGE ---- /////
+    let anonymous_chat = {}; // Format: { userJid: partnerJid }
+    let anonymous_waiting = []; // Array pengguna yang sedang menunggu partner
 
     //——————————[ TIME ]——————————//
     
@@ -516,35 +519,7 @@ const { default:
               const res = await axios.get(`https://app.pakasir.com/api/transactiondetail?project=${project}&amount=${amount}&order_id=${orderId}&api_key=${apikey}`);
               return res.data.transaction;
           }
-          //ANON
-          if (!asya.anonymous) asya.anonymous = {}
-          // --- LOGIKA JEMBATAN ANONYMOUS ---
-const room = asya.anonymous[sender]
-if (room && room.status === 'chatting' && !isCmd) {
-    let target = room.peer
-    
-    // VALIDASI VIEW ONCE (Anti-Read ViewOnce)
-    // Jika pesan mengandung viewOnce, bot akan menolak meneruskan
-    const isViewOnce = m.mtype === 'viewOnceMessageV2' || 
-                       m.msg?.viewOnce || 
-                       m.message?.viewOnceMessage || 
-                       m.message?.viewOnceMessageV2
 
-    if (isViewOnce) {
-        return reply('Maaf, pengiriman pesan "Sekali Lihat" tidak diizinkan di fitur Anonymous demi keamanan.')
-    }
-
-    // TERUSKAN PESAN MULTIMEDIA
-    if (m.mtype === 'conversation') {
-        await asya.sendMessage(target, { text: budy })
-    } else if (isMedia || m.mtype === 'documentMessage') {
-        let media = await m.download()
-        await asya.sendFile(target, media, '', m.msg.caption || '', null)
-    } else if (m.mtype === 'stickerMessage') {
-        let sc = await m.download()
-        await asya.sendImageAsSticker(target, sc, null, { packname: "Anonymous", author: "Bot" })
-    }
-}
           // GAME
           if (!asya.typing) asya.typing = {}
             const kalimatRace = JSON.parse(fs.readFileSync('./database/game/kalimatrace.json'))
@@ -661,9 +636,14 @@ if (m.isGroup && isAntiLink && !isCreator && !isAdmins) {
     
     switch (command) {
     case 'menu':{
-        var data = allmenu(sender, prefix)
-        var buttons = [{text: "Nomor Owner", id: "/owner"}]
-        await sendButton(m.chat, data, jam(), buttons, m)
+    const userLimit = isPremium ? 'Unlimited' : getLimit(sender, limitCount, limit);
+    const userBalance = isPremium ? 'Unlimited' : getBalance(sender, balance);
+    
+    // Kirim userLimit dan userBalance ke fungsi allmenu
+    var data = allmenu(sender, prefix, userLimit, userBalance)
+    
+    var buttons = [{text: "Nomor Owner", id: "/owner"}]
+    await sendButton(m.chat, data, jam(), buttons, m)
     }
     break
     
@@ -876,68 +856,6 @@ Contoh : 🔔 : 🔔 : 🔔`
       }
     }
     break;
-    /// ANON
-    case 'start': {
-      if (Object.values(asya.anonymous).find(user => user.id === sender)) return reply('Kamu masih berada dalam sesi chat!')
-      reply('Mencari partner anonymous...')
-      // Cari user yang sedang 'waiting'
-      let room = Object.values(asya.anonymous).find(user => user.status === 'waiting' && user.id !== sender)
-      if (room) {
-          // Jika ketemu partner
-          asya.anonymous[room.id].status = 'chatting'
-          asya.anonymous[room.id].peer = sender
-          asya.anonymous[sender] = {
-              id: sender,
-              status: 'chatting',
-              peer: room.id
-          }
-          asya.sendMessage(room.id, { text: '_Partner ditemukan! Silahkan chat._' })
-          asya.sendMessage(sender, { text: '_Partner ditemukan! Silahkan chat._' })
-      } else {
-          // Jika tidak ada, masuk antrian
-          asya.anonymous[sender] = {
-              id: sender,
-              status: 'waiting',
-              peer: ''
-          }
-      }
-  }
-  break
-
-  case 'stop': {
-      let room = asya.anonymous[sender]
-      if (!room) return reply('Kamu tidak sedang dalam sesi chat.')
-      if (room.peer !== '') {
-          asya.sendMessage(room.peer, { text: '_Partner telah menghentikan chat._' })
-          delete asya.anonymous[room.peer]
-      }
-      delete asya.anonymous[sender]
-      reply('Sesi anonymous dihentikan.')
-  }
-  break
-
-  case 'next': {
-      let room = asya.anonymous[sender]
-      if (!room) return reply('Gunakan .start untuk memulai.')
-      if (room.peer !== '') {
-          asya.sendMessage(room.peer, { text: '_Partner telah menghentikan chat._' })
-          delete asya.anonymous[room.peer]
-      }
-      delete asya.anonymous[sender]
-      // Otomatis panggil start lagi
-      asya.anonymous[sender] = { id: sender, status: 'waiting', peer: '' }
-      reply('Mencari partner baru...')
-      let newPartner = Object.values(asya.anonymous).find(user => user.status === 'waiting' && user.id !== sender)
-      if (newPartner) {
-          asya.anonymous[newPartner.id].status = 'chatting'
-          asya.anonymous[newPartner.id].peer = sender
-          asya.anonymous[sender].status = 'chatting'
-          asya.anonymous[sender].peer = newPartner.id
-          asya.sendMessage(newPartner.id, { text: '_Partner ditemukan!_' })
-          asya.sendMessage(sender, { text: '_Partner ditemukan!_' })
-      }
-  }
-  break
             case 'sticker':
     case 'stiker':
     case 's': {
@@ -967,39 +885,39 @@ Contoh : 🔔 : 🔔 : 🔔`
       fs.unlinkSync(media);
     }
     break;
-    //——————————[ SISTEM POIN & UANG ]——————————//
-    case 'transfer': case 'tf':{
-        let target
-        if (m.quoted && m.quoted.sender) {
-            target = m.quoted.sender
-        } else if (m.mentionedJid && m.mentionedJid.length > 0) {
-            target = m.mentionedJid[0]
-        } else {
-            return reply('Tag atau reply user yang mau ditransfer')
+        //——————————[ SISTEM POIN & UANG ]——————————//
+        case 'transfer': case 'tf':{
+            let target
+            if (m.quoted && m.quoted.sender) {
+                target = m.quoted.sender
+            } else if (m.mentionedJid && m.mentionedJid.length > 0) {
+                target = m.mentionedJid[0]
+            } else {
+                return reply('Tag atau reply user yang mau ditransfer')
+            }
+            if (target === sender) {
+                return reply('Tidak bisa transfer ke diri sendiri')
+            }
+            const swn = args.join(" ")
+            const jumlah = swn.split("|")[1]
+            if (!jumlah) return reply('Masukkan jumlah\nContoh: /transfer @user|1000')
+            if (isNaN(jumlah)) return reply('Jumlah harus angka')
+            const nominal = parseInt(jumlah)
+            const saldoPengirim = getBalance(sender, balance)
+            if (saldoPengirim < nominal) {
+                return reply(`Saldo tidak cukup ❌\nSaldo kamu: $${saldoPengirim}`)
+            }
+            kurangBalance(sender, nominal, balance)
+            addBalance(target, nominal, balance)
+            reply(monospace(
+                `✅ Transfer berhasil\n\n` +
+                `Ke: @${target.split('@')[0]}\n` +
+                `Jumlah: $${nominal}\n` +
+                `Sisa saldo: $${getBalance(sender, balance)}`,
+                { mentions: [target] }
+            ))
         }
-        if (target === sender) {
-            return reply('Tidak bisa transfer ke diri sendiri')
-        }
-        const swn = args.join(" ")
-        const jumlah = swn.split("|")[1]
-        if (!jumlah) return reply('Masukkan jumlah\nContoh: /transfer @user|1000')
-        if (isNaN(jumlah)) return reply('Jumlah harus angka')
-        const nominal = parseInt(jumlah)
-        const saldoPengirim = getBalance(sender, balance)
-        if (saldoPengirim < nominal) {
-            return reply(`Saldo tidak cukup ❌\nSaldo kamu: $${saldoPengirim}`)
-        }
-        kurangBalance(sender, nominal, balance)
-        addBalance(target, nominal, balance)
-        reply(monospace(
-            `✅ Transfer berhasil\n\n` +
-            `Ke: @${target.split('@')[0]}\n` +
-            `Jumlah: $${nominal}\n` +
-            `Sisa saldo: $${getBalance(sender, balance)}`,
-            { mentions: [target] }
-        ))
-    }
-    break
+        break
     
     
     case 'uang':
@@ -1905,7 +1823,7 @@ case 'buyprem': {
   const apikey = "ZU0JBrZtUZSqI8nAqz73zbtgJFtj0tY5"
   
   const hargaDasar = 2000
-  const harganya = Math.ceil(hargaDasar + (hargaDasar * 0.007) + 350)
+  const harganya = Math.ceil(hargaDasar + (hargaDasar * 0.007) + 320)
   
   if (checkPremiumUser(m.sender, premium)) return reply("Kamu sudah premium!")
 
@@ -1919,7 +1837,7 @@ case 'buyprem': {
 
       let totalFinal = cqris.total_payment + cqris.fee
       let qrisMsg = await asya.sendMessage(m.chat, {
-          image: { url: `https://quickchart.io/qr?text=${encodeURIComponent(cqris.payment_number)}` },
+          image: { url: `https://api.qrserver.com/v1/create-qr-code/?size=750x750&data=${encodeURIComponent(cqris.payment_number)}&qzone=4&format=gif&bgcolor=576A8F&color=FFF8DE` },
           caption: `💳 *PAYMENT QRIS PREMIUM*\n\n` +
                    `💵 *Harga:* Rp${hargaDasar.toLocaleString('id-ID')}\n` +
                    `🔌 *Admin/Pajak:* Rp${(totalFinal - hargaDasar).toLocaleString('id-ID')}\n` +

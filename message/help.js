@@ -18,8 +18,12 @@ function toCommas(x) {
 	return x;
 }
 
-exports.allmenu = (sender, prefix) => {
+exports.allmenu = (sender, prefix, limit, balance) => {
 	return `${ucapanWaktu} @${sender.split("@") [0]} 👋
+
+*── 「 USER INFO 」 ──*
+💳 *Saldo* : $${balance}
+🎫 *Poin* : ${limit}
 
 Tanggal : ${moment.tz('Asia/Jakarta').format('DD/MM/YY')}
 Waktu : ${moment.tz('Asia/Jakarta').format('HH:mm:ss')} WIB
@@ -32,7 +36,6 @@ ${readmore}
 ≻ ${prefix}brat
 ≻ ${prefix}sticker
 ≻ ${prefix}editimg
-≻ ${prefix}slot
 
 *( ⭐ )  Download Menu*
 ≻ ${prefix}tiktok
@@ -68,11 +71,6 @@ ${readmore}
 ≻ ${prefix}uang
 ≻ ${prefix}topuang
 ≻ ${prefix}transfer @user|nominal
-
-*( 👀 )  Anonymous*
-≻ ${prefix}start
-≻ ${prefix}stop
-≻ ${prefix}next
 
 *( 👥 )  Grup Menu*
 ≻ ${prefix}buka
